@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>さらに表示プレビュー</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#EEF1F4; --panel:#FFFFFF; --panel-2:#F6F8FA; --line:#D6DCE3;
+  --ink:#141B22; --ink-2:#4B5763; --ink-3:#7A8590;
+  --accent:#1D6FD1; --accent-ink:#FFFFFF; --accent-soft:#E3EEFB;
+  --warn:#B4520A; --warn-soft:#FBEBDD; --hide:#8A939C; --hide-soft:#ECEFF2;
+  --ok:#1E7A4C; --ok-soft:#DFF3E7;
+  --phone:#FFFFFF; --phone-ink:#0F1419; --phone-muted:#536471; --phone-frame:#1A1F26;
+  --shadow:0 12px 32px rgba(20,27,34,.10);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1317; --panel:#171C22; --panel-2:#1E242B; --line:#2C343D;
+    --ink:#E9EDF1; --ink-2:#B4BDC6; --ink-3:#7F8993;
+    --accent:#5BA0F2; --accent-ink:#0B1622; --accent-soft:#1B2C41;
+    --warn:#F0A05A; --warn-soft:#3A2614; --hide:#7B858F; --hide-soft:#232A31;
+    --ok:#5FCB8E; --ok-soft:#173226;
+    --phone:#000000; --phone-ink:#E7E9EA; --phone-muted:#71767B; --phone-frame:#2A3139;
+    --shadow:0 12px 32px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1317; --panel:#171C22; --panel-2:#1E242B; --line:#2C343D;
+  --ink:#E9EDF1; --ink-2:#B4BDC6; --ink-3:#7F8993;
+  --accent:#5BA0F2; --accent-ink:#0B1622; --accent-soft:#1B2C41;
+  --warn:#F0A05A; --warn-soft:#3A2614; --hide:#7B858F; --hide-soft:#232A31;
+  --ok:#5FCB8E; --ok-soft:#173226;
+  --phone:#000000; --phone-ink:#E7E9EA; --phone-muted:#71767B; --phone-frame:#2A3139;
+  --shadow:0 12px 32px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.mono{font-family:"DM Mono","SF Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+header{padding:28px 24px 12px;max-width:900px;margin:0 auto}
+header h1{margin:0;font-size:22px;font-weight:700;letter-spacing:.01em;text-wrap:balance}
+header p{margin:6px 0 0;color:var(--ink-2);max-width:60em}
+main{max-width:900px;margin:0 auto;padding:8px 24px 48px;display:grid;grid-template-columns:1fr;grid-template-areas:"input" "phone" "rest";gap:0;align-items:start}
+.area-input{grid-area:input}.area-rest{grid-area:rest;min-width:0}.phone-wrap{grid-area:phone;max-width:480px;margin:16px auto 0;width:100%}
+textarea{min-height:220px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.panel-h h2{margin:0;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+textarea{width:100%;min-height:300px;resize:vertical;border:0;outline:0;background:transparent;color:var(--ink);padding:14px 16px;font:inherit;font-size:15px;line-height:1.7}
+textarea:focus-visible{box-shadow:inset 0 0 0 2px var(--accent)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{font:inherit;font-size:12px;font-weight:500;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);padding:5px 10px;border-radius:7px;cursor:pointer}
+button:hover{border-color:var(--ink-3)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--line)}
+.stat{padding:12px 16px;border-right:1px solid var(--line)}
+.stat:last-child{border-right:0}
+.stat .k{font-size:11px;color:var(--ink-3);letter-spacing:.04em}
+.stat .v{font-size:22px;font-weight:500;line-height:1.2;margin-top:2px}
+.stat .v small{font-size:12px;color:var(--ink-3);font-weight:400;margin-left:2px}
+.stat.bad .v{color:var(--warn)}
+.stat.good .v{color:var(--ok)}
+@media (max-width:560px){.stats{grid-template-columns:repeat(2,1fr)}.stat:nth-child(2){border-right:0}.stat:nth-child(-n+2){border-bottom:1px solid var(--line)}}
+
+.verdict{margin:16px 0 0;padding:12px 14px;border-radius:10px;display:flex;gap:10px;align-items:flex-start;background:var(--ok-soft);color:var(--ok);font-weight:500}
+.verdict.warn{background:var(--warn-soft);color:var(--warn)}
+.verdict .dot{width:9px;height:9px;border-radius:50%;background:currentColor;flex:none;margin-top:7px}
+.verdict ul{margin:4px 0 0;padding-left:18px;font-weight:400;color:var(--ink)}
+.verdict ul li{margin:2px 0}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11px;font-weight:500;color:var(--ink-3);text-align:left;letter-spacing:.04em;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:6px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;white-space:nowrap}
+td.txt{max-width:0;width:100%;overflow-wrap:anywhere;white-space:pre-wrap}
+tr.hidden td{color:var(--hide)}
+tr.hidden td.txt{text-decoration:line-through;text-decoration-color:var(--hide)}
+tr.edge td.txt{color:var(--warn)}
+tr.blank td.txt{color:var(--ink-3);font-style:italic}
+.pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;white-space:nowrap;font-weight:500}
+.pill.show{background:var(--ok-soft);color:var(--ok)}
+.pill.edge{background:var(--warn-soft);color:var(--warn)}
+.pill.hide{background:var(--hide-soft);color:var(--hide)}
+.tablewrap{overflow-x:auto}
+
+/* phone (iPhone 15/16/17 風) */
+.phone-wrap{position:static}
+.phone{position:relative;background:#0B0B0D;border-radius:56px;padding:12px;box-shadow:0 0 0 2px #3A3A3F,0 0 0 3.5px #17171A,var(--shadow),inset 0 0 0 1px #2A2A2E}
+.phone [class^="btn-"]{position:absolute;background:#2C2C31;border-radius:2px}
+.btn-mute{left:-4px;top:110px;width:4px;height:28px}.btn-vol1{left:-4px;top:160px;width:4px;height:54px}.btn-vol2{left:-4px;top:224px;width:4px;height:54px}.btn-side{right:-4px;top:180px;width:4px;height:84px}
+.screen{position:relative;background:var(--phone);border-radius:46px;padding:0 0 12px;color:var(--phone-ink);min-height:300px;overflow:hidden;font-family:-apple-system,"SF Pro Text","Hiragino Sans","Zen Kaku Gothic New",system-ui,sans-serif}
+.island{position:absolute;left:50%;top:11px;transform:translateX(-50%);width:118px;height:34px;background:#000;border-radius:20px}
+.statusbar{display:flex;justify-content:space-between;align-items:center;padding:16px 30px 0 34px;height:54px;font-size:16px;font-weight:600;letter-spacing:-.01em}
+.sb-icons{display:flex;gap:6px;align-items:center}
+.appbar{display:flex;align-items:center;gap:14px;padding:6px 16px 8px}
+.appbar .back{font-size:30px;line-height:1;font-weight:300;margin-top:-4px}
+.apptitle{flex:1;line-height:1.15}.apptitle b{display:block;font-size:17px;font-weight:800}.apptitle small{font-size:12px;color:var(--phone-muted)}
+.appbar .dots{font-size:18px;letter-spacing:1px}
+.tabs{display:flex;border-bottom:1px solid var(--line);padding:0 8px;margin-bottom:12px}
+.tabs span{flex:1;text-align:center;font-size:14px;color:var(--phone-muted);padding:10px 0 8px;font-weight:500;position:relative}
+.tabs span.on{color:var(--phone-ink);font-weight:700}
+.tabs span.on::after{content:"";position:absolute;left:50%;transform:translateX(-50%);bottom:0;width:56px;height:4px;border-radius:2px;background:var(--accent)}
+.post{display:flex;gap:10px;padding:0 16px}
+.avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#2E4A6B,#7FA8D6);flex:none}
+.post .meta{font-size:15px;line-height:1.3;display:flex;align-items:center;gap:3px;min-width:0}
+.post .meta b{font-weight:700;white-space:nowrap}
+.post .meta .verified{color:var(--accent);display:inline-flex}
+.post .meta .handle{color:var(--phone-muted);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.post .meta .xmark{color:var(--phone-ink);font-size:16px;margin-left:auto}
+.ptext{font-size:17px;line-height:1.35;margin-top:4px;white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;font-family:"Hiragino Sans","Zen Kaku Gothic New","Noto Sans JP",system-ui,sans-serif}
+.ptext .pl{display:block;min-height:1.35em}
+.ptext .more{color:var(--accent)}
+.ptext .cut{color:var(--warn);text-decoration:line-through;opacity:1}
+.ptext a{color:var(--accent);text-decoration:none}
+.hiddenzone{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+.hiddenzone .lbl{font-size:11px;color:var(--hide);letter-spacing:.06em;margin-bottom:4px}
+.hiddenzone .ptext{color:var(--hide);opacity:.75;font-size:15px}
+.hiddenzone .ptext .pl{min-height:1.2em}
+.pfoot{display:flex;justify-content:space-between;color:var(--phone-muted);font-size:13px;margin-top:14px;padding-right:4px}
+.homebar{width:134px;height:5px;border-radius:3px;background:var(--phone-ink);margin:18px auto 0;opacity:.9}
+.mode{display:flex;gap:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:3px}
+.mode button{border:0;background:transparent;padding:4px 10px;border-radius:6px;color:var(--ink-2)}
+.mode button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.opt{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2);padding:10px 16px;border-top:1px solid var(--line);flex-wrap:wrap}
+.opt input[type=range]{width:120px;accent-color:var(--accent)}
+.opt .val{min-width:3em}
+.credit{margin-top:28px;text-align:right;font-size:12px;color:var(--ink-3);letter-spacing:.04em}
+.rules{margin-top:22px;padding:16px 18px;color:var(--ink-2);font-size:13px;line-height:1.75}
+.rules h3{margin:0 0 6px;font-size:13px;color:var(--ink);font-weight:700}
+.rules p{margin:0 0 8px}
+.rules strong{color:var(--ink);font-weight:700}
+.rules ol{margin:0;padding-left:20px}
+.rules li{margin:2px 0}
+kbd{font-family:"DM Mono",monospace;font-size:12px;background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:0 5px}
+#measure{position:absolute;left:-99999px;top:0;visibility:hidden;pointer-events:none}
+@media (prefers-reduced-motion:no-preference){.verdict{transition:background .2s,color .2s}}
+</style>
+</head>
+<body>
+
+
+<header>
+  <h1>さらに表示プレビュー</h1>
+  <p>PCで書いたポストを貼ると、Xのモバイルアプリで「さらに表示」に隠れる範囲を推定します。空行込みの行数と加重文字数（全角140字＝280）の2本のルールで判定します。</p>
+</header>
+
+<main>
+  <section class="area-input">
+    <div class="panel">
+      <div class="panel-h">
+        <h2>本文</h2>
+        <div class="toolbar">
+          <button type="button" id="btnSample">サンプルを読み込む</button>
+          <button type="button" id="btnClear">クリア</button>
+        </div>
+      </div>
+      <textarea id="src" spellcheck="false" placeholder="ここにポスト本文を貼り付け（改行・空行もそのまま）"></textarea>
+      <div class="opt">
+        <span>1行に入る全角文字数</span>
+        <input type="range" id="cols" min="18" max="30" step="0.5" value="23.5">
+        <span class="val mono" id="colsVal">23.5</span>
+        <span style="color:var(--ink-3)">iPhone標準サイズの実測値はおよそ23.5。文字サイズを大きくしている人ほど少なくなります。</span>
+      </div>
+      <div class="stats" id="stats"></div>
+    </div>
+  </section>
+
+  <section class="area-rest">
+    <div id="verdict"></div>
+
+    <div class="panel" style="margin-top:16px">
+      <div class="panel-h"><h2>行ごとの判定</h2><span id="tblNote" style="font-size:12px;color:var(--ink-3)"></span></div>
+      <div class="tablewrap">
+      <table>
+        <thead><tr><th class="n">行</th><th class="n">見た目</th><th class="n">累計枠</th><th class="n">累計字</th><th>判定</th><th>内容</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      </div>
+    </div>
+
+    <footer class="credit">作成：arne 松島</footer>
+  </section>
+
+  <aside class="phone-wrap">
+    <div class="panel-h" style="border:0;padding:0 4px 10px">
+      <h2 id="modeLabel">モバイル表示（推定）</h2>
+      <div class="mode" role="group" aria-label="表示モード">
+        <button type="button" data-mode="mobile" aria-pressed="true">モバイル</button>
+        <button type="button" data-mode="pc" aria-pressed="false">PC</button>
+      </div>
+    </div>
+    <div class="phone">
+      <span class="btn-mute"></span><span class="btn-vol1"></span><span class="btn-vol2"></span><span class="btn-side"></span>
+      <div class="screen">
+        <div class="island"></div>
+        <div class="statusbar"><span class="time">15:21</span><span class="sb-icons"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="0.8"/><rect x="5" y="5.5" width="3" height="6.5" rx="0.8"/><rect x="10" y="3" width="3" height="9" rx="0.8"/><rect x="15" y="0" width="3" height="12" rx="0.8"/></svg><svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><path d="M8 9.6a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2zM8 6c1.6 0 3 .6 4.1 1.6l-1.3 1.3A4 4 0 0 0 8 7.9a4 4 0 0 0-2.8 1.1L3.9 7.6A5.9 5.9 0 0 1 8 6zm0-3.2c2.5 0 4.8.9 6.5 2.5l-1.3 1.3A7.4 7.4 0 0 0 8 4.7a7.4 7.4 0 0 0-5.2 2L1.5 5.3A9.2 9.2 0 0 1 8 2.8z"/></svg><svg width="27" height="13" viewBox="0 0 27 13" fill="none" stroke="currentColor"><rect x="0.5" y="0.5" width="22" height="12" rx="3.5" opacity=".4"/><rect x="2" y="2" width="16" height="9" rx="2" fill="currentColor" stroke="none"/><path d="M24 4.5v4a2 2 0 0 0 0-4z" fill="currentColor" stroke="none" opacity=".4"/></svg></span></div>
+        <div class="appbar"><span class="back">‹</span><div class="apptitle"><b>アカウント名</b><small>1,234 件のポスト</small></div><span class="dots">···</span></div>
+        <div class="tabs"><span class="on">ポスト</span><span>返信</span><span>ハイライト</span><span>メディア</span></div>
+        <div class="post">
+          <div class="avatar"></div>
+          <div style="min-width:0;flex:1">
+            <div class="meta"><b>アカウント名</b><span class="verified"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg></span><span class="handle">@account · 1時間</span><span class="xmark">𝕏</span></div>
+            <div class="ptext" id="ptext"></div>
+            <div class="hiddenzone" id="hz" hidden>
+              <div class="lbl">↓ タップするまで見えない部分（打ち消し線＝「…さらに表示」に置き換わって欠ける文字）</div>
+              <div class="ptext" id="phidden"></div>
+            </div>
+            <div class="pfoot"><span>💬</span><span>🔁</span><span>♡ 2</span><span>📊 775</span><span>🔖</span><span>↑</span></div>
+          </div>
+        </div>
+        <div class="homebar"></div>
+      </div>
+    </div>
+  </aside>
+</main>
+<div id="measure"><div class="ptext" id="mtext"></div></div>
+
+<script>
+(function(){
+const SAMPLE = "⋰\n\nUK.PROJECTが開催する\n˗ˏˋ ONE ON ONE ˎˊ˗\n#ワンオンワン\n\n⋱\n\nONE ON ONE-NEXT\n9/10(木)Shibuya Milkyway\n開場18:00 開演18:30\n\n出演：Aonowa / 至福ぽんちょ / HINONABE /\nライティライト / Lala\n\n前売 ¥3,500(Drink別）\n\n🎫一般発売中\nhttps://livepocket.jp/e/oneonone-next_0910\n\n@OneonOne2021";
+const LIMIT_W = 280, BACKOFF = 12, T_H = 8.25;
+const UNIT = {J:1, U:1, L:0.7, S:0.5, B:0.6};
+const CJK_RE=/[　-鿿豈-﫿＀-￯]|\p{Extended_Pictographic}/u;
+function lineClass(line,toks){
+  if(line.trim()==='') return 'B';
+  if(toks.some(t=>t.url)) return 'U';
+  if(CJK_RE.test(line)) return 'J';
+  if(/^[\s←-⏿]+$/.test(line)) return 'S';
+  return 'L';
+}
+
+const src=document.getElementById('src'), cols=document.getElementById('cols'), colsVal=document.getElementById('colsVal');
+const rows=document.getElementById('rows'), statsEl=document.getElementById('stats'), verdictEl=document.getElementById('verdict');
+const ptext=document.getElementById('ptext'), phidden=document.getElementById('phidden'), hz=document.getElementById('hz');
+const mtext=document.getElementById('mtext'), tblNote=document.getElementById('tblNote'), modeLabel=document.getElementById('modeLabel');
+let mode='mobile';
+
+const URL_RE=/(?:https?:\/\/)?(?:[a-z0-9-]+\.)+(?:com|jp|net|org|to|ee|be|me|co|io|tv|info|link|page|app|fm|ly|gl|st|jp\/)[^\s]*/gi;
+// twitter-text 加重: 0-4351, 8192-8205, 8208-8223, 8242-8247 → 1, それ以外 2。絵文字シーケンスは1個で2。
+const EMOJI_RE=/(?:\p{Extended_Pictographic}|\p{Regional_Indicator})(?:\uFE0F|\u200D(?:\p{Extended_Pictographic}|\p{Regional_Indicator}|♀|♂)|\p{Emoji_Modifier}|\uFE0F)*/u;
+function tokens(line){ // → [{s, w}] URLは1トークン
+  const out=[]; let i=0; const urls=[]; let m; URL_RE.lastIndex=0;
+  while((m=URL_RE.exec(line))){ if(m[0].length>=5) urls.push([m.index,m.index+m[0].length]); }
+  while(i<line.length){
+    const u=urls.find(r=>r[0]===i);
+    if(u){ const raw=line.slice(u[0],u[1]); let d=raw.replace(/^https?:\/\//i,'').replace(/^www\./i,''); if(d.length>28) d=d.slice(0,28)+'…'; out.push({s:raw,d,w:23,url:true}); i=u[1]; continue; }
+    const rest=line.slice(i); const em=rest.match(EMOJI_RE);
+    if(em && em.index===0 && em[0].length){ out.push({s:em[0],w:2}); i+=em[0].length; continue; }
+    const cp=line.codePointAt(i); const ch=String.fromCodePoint(cp);
+    const w=(cp<=4351||(cp>=8192&&cp<=8205)||(cp>=8208&&cp<=8223)||(cp>=8242&&cp<=8247))?1:2;
+    out.push({s:ch,w}); i+=ch.length;
+  }
+  return out;
+}
+function visualLines(line){ // 実際にレンダリングして折り返し行数を測る
+  mtext.textContent = line.length? line : ' ';
+  const lh=parseFloat(getComputedStyle(mtext).lineHeight);
+  return Math.max(1, Math.round(mtext.getBoundingClientRect().height/lh));
+}
+function disp(toks){return toks.map(t=>t.url?t.d:t.s).join('')}
+function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+function renderTokens(toks){return toks.map(t=>t.url?'<a>'+esc(t.d)+'</a>':esc(t.s)).join('')}
+const MORE='… さらに表示';
+function units(toks){const u=[];toks.forEach(t=>{if(t.url){[...t.d].forEach(c=>u.push({s:c,d:c,url:true}));}else u.push(t);});return u;}
+function renderUnits(us){let h='',inA=false;us.forEach(t=>{if(t.url&&!inA){h+='<a>';inA=true;}if(!t.url&&inA){h+='</a>';inA=false;}h+=esc(t.url?t.d:t.s);});if(inA)h+='</a>';return h;}
+
+function analyze(){
+  const text=src.value.replace(/\r\n?/g,'\n');
+  const lines=text.split('\n');
+  const mobile = mode==='mobile';
+  const colsN=parseFloat(cols.value);
+  const avail=ptext.parentElement.clientWidth||320; const fs=Math.min(17, avail/colsN);
+  [mtext,ptext,phidden].forEach(el=>{el.style.fontSize=fs+'px'; el.style.width=colsN+'em';});
+  let cumW=0, cumV=0, totalV=0, totalW=0;
+  const info=lines.map((line,idx)=>{
+    const toks=tokens(line); const w=toks.reduce((a,t)=>a+t.w,0)+(idx<lines.length-1?1:0);
+    const v=visualLines(disp(toks));
+    const cls=lineClass(line,toks); const unit=UNIT[cls];
+    return {line,toks,w,v,cls,unit,h:unit*v,blank:cls==='B'};
+  });
+  totalV=info.reduce((a,l)=>a+l.v,0); totalW=info.reduce((a,l)=>a+l.w,0);
+  const totalH=info.reduce((a,l)=>a+l.h,0);
+  // 文字数ルール: 280を超えたら、超える直前のトークンで切る
+  let charCut=null; // {li, ti(切る直前のトークン数)}
+  if(totalW>LIMIT_W){
+    let acc=0; outer: for(let li=0;li<info.length;li++){
+      const L=info[li]; let inLine=0;
+      for(let ti=0;ti<L.toks.length;ti++){
+        if(acc+L.toks[ti].w>LIMIT_W){
+          if(inLine<BACKOFF && li>0){ charCut={li:li-1,ti:info[li-1].toks.length,backoff:true}; }
+          else charCut={li,ti};
+          break outer;
+        }
+        acc+=L.toks[ti].w; inLine+=L.toks[ti].w;
+      }
+      acc+=1; // 改行
+    }
+    if(!charCut) charCut={li:info.length-1,ti:info[info.length-1].toks.length};
+  }
+  // 行数（高さ）ルール（モバイルのみ）: 日本語行=1, 半角行=0.7, 空行=0.6, 記号だけの行=0.5 の合計が 8.25 を超えると折りたたみ
+  let lineCut=null;
+  if(mobile && totalH>T_H+1e-9){
+    let acc=0; for(let li=0;li<info.length;li++){
+      const L=info[li];
+      if(acc+L.h>T_H+1e-9){ // この行で枠を超える
+        const fit=Math.floor((T_H-acc)/L.unit+1e-9); // この行のうち枠に入る見た目行数
+        if(fit>=1 && L.v>1){ // 折り返しの途中で切れる
+          let k=0,s='';
+          for(let ti=0;ti<L.toks.length;ti++){ if(visualLines(s+(L.toks[ti].url?L.toks[ti].d:L.toks[ti].s))>fit){break;} s+=(L.toks[ti].url?L.toks[ti].d:L.toks[ti].s); k=ti+1; }
+          lineCut={li,ti:k,wrap:true};
+        } else { // 直前の行末で切れる（空行は飛ばす）
+          let p=li-1; while(p>0&&info[p].blank)p--;
+          lineCut={li:Math.max(0,p),ti:info[Math.max(0,p)].toks.length,wrap:false};
+        }
+        break;
+      }
+      acc+=L.h;
+    }
+  }
+  // 先に来る方
+  let cut=null, reason='';
+  const key=c=>c?c.li*1e6+c.ti:Infinity;
+  if(charCut||lineCut){
+    if(key(charCut)<=key(lineCut)){cut=charCut;reason='chars';} else {cut=lineCut;reason='lines';}
+  }
+  // 末尾1字が欠ける（切れる行の最後のトークン）
+  let eaten=null; // {li, from}: from 以降のトークンが「…さらに表示」に置き換わる
+  if(cut && cut.ti>0){
+    const L=info[cut.li]; const us=units(L.toks.slice(0,cut.ti)); let from=us.length-1; // 最低1文字は必ず欠ける
+    const base=visualLines(disp(us));
+    while(from>0 && visualLines(disp(us.slice(0,from))+MORE)>base) from--;
+    eaten={li:cut.li,from,us};
+  }
+
+  // ---- 統計 ----
+  const zen=(totalW/2);
+  const hiddenLines = cut? info.slice(cut.li+1).filter(l=>!l.blank).length + (cut.ti<info[cut.li].toks.length && !info[cut.li].blank ? 1:0) : 0;
+  statsEl.innerHTML=
+    `<div class="stat ${totalW>LIMIT_W?'bad':''}"><div class="k">加重文字数（上限280）</div><div class="v mono">${totalW}<small>/ 全角${zen%1?zen.toFixed(1):zen}字</small></div></div>`+
+    `<div class="stat ${mobile&&totalH>T_H?'bad':''}"><div class="k">表示枠の消費（日本語行換算・上限8.25）</div><div class="v mono">${totalH.toFixed(2)}<small>/ ${totalV}行</small></div></div>`+
+    `<div class="stat"><div class="k">文字のある行 / 空行</div><div class="v mono">${info.filter(l=>!l.blank).length}<small>行</small> ${info.filter(l=>l.blank).length}<small>空行</small></div></div>`+
+    `<div class="stat ${cut?'bad':'good'}"><div class="k">隠れる行</div><div class="v mono">${cut?hiddenLines:0}<small>行</small></div></div>`;
+
+  // ---- 判定文 ----
+  if(!text.trim()){ verdictEl.innerHTML=''; }
+  else if(!cut){ verdictEl.innerHTML=`<div class="verdict"><span class="dot"></span><div>${mobile?'モバイルでも':'PCでは'}全文がそのまま表示されます。</div></div>`; }
+  else{
+    const tips=[];
+    if(reason==='lines') tips.push(`空行・折り返し込みで${totalV}行（日本語行換算${totalH.toFixed(2)}）あり、モバイルの表示枠（約8.25行分）を超えるため、${cut.li+1}行目${cut.wrap?'の折り返し途中':'の末尾'}で切れます。空行込み8行以内に収めるか、空行や装飾行を減らしてください。`);
+    if(reason==='chars') tips.push(`加重文字数${totalW}が上限280を超えるため、${cut.li+1}行目${cut.backoff?'の手前（直前の行末）':'の途中'}で切れます。切れる位置の直前に空行を置くと文の途中で切れません。`);
+    if(eaten){ const ts=eaten.us.slice(eaten.from); if(ts.some(t=>t.url)) tips.push('切れる行の末尾がURLです。URLの末尾が「…さらに表示」に置き換わって欠けます。次の行に移すか、URLの後に絵文字などを足してください。'); else tips.push(`切れる行の末尾「${disp(ts)}」は「…さらに表示」に置き換わります。`); }
+    const hiddenTxt=info.slice(cut.li+1).map(l=>l.line).join(' ');
+    if(/https?:\/\/|\.(com|jp|to|ee|be|net|org)\b/i.test(hiddenTxt)) tips.push('隠れる部分にURLがあります。タップされないと見えません。');
+    if(/\d{1,2}\/\d{1,2}|\d{1,2}:\d{2}|開場|開演|¥|円/.test(hiddenTxt)) tips.push('隠れる部分に日程・時間・料金らしき情報があります。');
+    verdictEl.innerHTML=`<div class="verdict warn"><span class="dot"></span><div>「さらに表示」で折りたたまれます（${reason==='lines'?'行数ルール':'文字数ルール'}）<ul>${tips.map(t=>'<li>'+esc(t)+'</li>').join('')}</ul></div></div>`;
+  }
+
+  // ---- 行テーブル ----
+  let accV=0, accW=0, accH=0; const trs=[];
+  info.forEach((L,li)=>{
+    accV+=L.v; accW+=L.w; accH+=L.h;
+    let st='show', label='表示';
+    if(cut){
+      if(li>cut.li) {st='hide';label='非表示';}
+      else if(li===cut.li){ if(cut.ti<L.toks.length){st='edge';label='途中で切れる';} else {st='edge';label='末尾1字欠け';} }
+    }
+    if(L.blank && st!=='hide' && cut && li>=cut.li) {st='hide';label='非表示';}
+    trs.push(`<tr class="${st==='hide'?'hidden':st==='edge'?'edge':''} ${L.blank?'blank':''}"><td class="n mono">${li+1}</td><td class="n mono">${L.v>1?L.v+'行':'1'}</td><td class="n mono" title="日本語行換算の累計">${accH.toFixed(1)}</td><td class="n mono">${accW-(li<info.length-1?1:0)}</td><td><span class="pill ${st}">${label}</span></td><td class="txt">${L.blank?'（空行）':esc(L.line)}</td></tr>`);
+  });
+  rows.innerHTML=trs.join('');
+  tblNote.textContent='累計枠＝日本語行換算（上限8.25）／累計字＝加重文字数（改行も1）';
+
+  // ---- プレビュー ----
+  modeLabel.textContent = mobile?'モバイル表示（推定）':'PCブラウザ表示（推定）';
+  let shown='', hidden='';
+  info.forEach((L,li)=>{
+    if(!cut || li<cut.li){ if(!(cut && L.blank)) shown+=`<span class="pl">${L.blank?'&nbsp;':renderTokens(L.toks)}</span>`; }
+    else if(li===cut.li){
+      const vis=eaten?eaten.us.slice(0,eaten.from):units(L.toks.slice(0,cut.ti)), eat=eaten?eaten.us.slice(eaten.from):null, rest=L.toks.slice(cut.ti);
+      shown+=`<span class="pl">${renderUnits(vis)}<span class="more">${MORE}</span></span>`;
+      if((eat&&eat.length)||rest.length) hidden+=`<span class="pl">${eat&&eat.length?`<span class="cut" title="「…さらに表示」に置き換わって欠ける部分">${esc(disp(eat))}</span>`:''}${renderTokens(rest)}</span>`;
+    } else hidden+=`<span class="pl">${L.blank?'&nbsp;':renderTokens(L.toks)}</span>`;
+  });
+  ptext.innerHTML=shown||'<span class="pl" style="color:var(--phone-muted)">本文を入力すると、ここにモバイルの見え方が出ます。</span>';
+  if(cut&&hidden){ hz.hidden=false; phidden.innerHTML=hidden; } else hz.hidden=true;
+}
+
+function save(){ try{localStorage.setItem('sarani.text',src.value);localStorage.setItem('sarani.cols',cols.value);}catch(e){} }
+src.addEventListener('input',()=>{analyze();save();});
+cols.addEventListener('input',()=>{colsVal.textContent=cols.value;analyze();save();});
+document.getElementById('btnSample').addEventListener('click',()=>{src.value=SAMPLE;analyze();save();});
+document.getElementById('btnClear').addEventListener('click',()=>{src.value='';analyze();save();src.focus();});
+document.querySelectorAll('.mode button').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;document.querySelectorAll('.mode button').forEach(x=>x.setAttribute('aria-pressed',x===b));analyze();}));
+let saved=null; try{saved=localStorage.getItem('sarani.text'); const c=localStorage.getItem('sarani.cols'); if(c){cols.value=c;colsVal.textContent=c;}}catch(e){}
+src.value = saved!==null && saved!=='' ? saved : SAMPLE;
+if(document.fonts&&document.fonts.ready){document.fonts.ready.then(analyze);}
+analyze();
+})();
+</script>
+
+</body>
+</html>

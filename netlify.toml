@@ -1,0 +1,11 @@
+# ビルド不要の静的サイト。リポジトリ直下の index.html をそのまま配信する
+[build]
+  publish = "."
+  command = ""
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
