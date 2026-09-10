@@ -22,4 +22,4 @@ URLを社外に見せたくない場合は、Netlify の Site configuration → 
 - 文字数ルール: 加重文字数（全角・絵文字=2、半角=1、URL=23）が280を超えると280の手前で切れる
 - 両方に当てはまる場合は先に来た方。PC（ブラウザ）は文字数ルールのみ
 
-作成：arne 松島
+作成：[arne 松島](https://github.com/komatsushima)

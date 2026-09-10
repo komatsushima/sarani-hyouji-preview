@@ -127,6 +127,8 @@ tr.blank td.txt{color:var(--ink-3);font-style:italic}
 .opt input[type=range]{width:120px;accent-color:var(--accent)}
 .opt .val{min-width:3em}
 .credit{margin-top:28px;text-align:right;font-size:12px;color:var(--ink-3);letter-spacing:.04em}
+.credit a{color:var(--ink-2);text-decoration:underline;text-underline-offset:3px}
+.credit a:hover{color:var(--accent)}
 .rules{margin-top:22px;padding:16px 18px;color:var(--ink-2);font-size:13px;line-height:1.75}
 .rules h3{margin:0 0 6px;font-size:13px;color:var(--ink);font-weight:700}
 .rules p{margin:0 0 8px}
@@ -152,7 +154,6 @@ kbd{font-family:"DM Mono",monospace;font-size:12px;background:var(--panel-2);bor
       <div class="panel-h">
         <h2>本文</h2>
         <div class="toolbar">
-          <button type="button" id="btnSample">サンプルを読み込む</button>
           <button type="button" id="btnClear">クリア</button>
         </div>
       </div>
@@ -180,7 +181,7 @@ kbd{font-family:"DM Mono",monospace;font-size:12px;background:var(--panel-2);bor
       </div>
     </div>
 
-    <footer class="credit">作成：arne 松島</footer>
+    <footer class="credit">作成：<a href="https://github.com/komatsushima" target="_blank" rel="noopener">arne 松島</a></footer>
   </section>
 
   <aside class="phone-wrap">
@@ -219,7 +220,7 @@ kbd{font-family:"DM Mono",monospace;font-size:12px;background:var(--panel-2);bor
 
 <script>
 (function(){
-const SAMPLE = "⋰\n\nUK.PROJECTが開催する\n˗ˏˋ ONE ON ONE ˎˊ˗\n#ワンオンワン\n\n⋱\n\nONE ON ONE-NEXT\n9/10(木)Shibuya Milkyway\n開場18:00 開演18:30\n\n出演：Aonowa / 至福ぽんちょ / HINONABE /\nライティライト / Lala\n\n前売 ¥3,500(Drink別）\n\n🎫一般発売中\nhttps://livepocket.jp/e/oneonone-next_0910\n\n@OneonOne2021";
+const SAMPLE = "";
 const LIMIT_W = 280, BACKOFF = 12, T_H = 8.25;
 const UNIT = {J:1, U:1, L:0.7, S:0.5, B:0.6};
 const CJK_RE=/[　-鿿豈-﫿＀-￯]|\p{Extended_Pictographic}/u;
@@ -390,11 +391,10 @@ function analyze(){
 function save(){ try{localStorage.setItem('sarani.text',src.value);localStorage.setItem('sarani.cols',cols.value);}catch(e){} }
 src.addEventListener('input',()=>{analyze();save();});
 cols.addEventListener('input',()=>{colsVal.textContent=cols.value;analyze();save();});
-document.getElementById('btnSample').addEventListener('click',()=>{src.value=SAMPLE;analyze();save();});
 document.getElementById('btnClear').addEventListener('click',()=>{src.value='';analyze();save();src.focus();});
 document.querySelectorAll('.mode button').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;document.querySelectorAll('.mode button').forEach(x=>x.setAttribute('aria-pressed',x===b));analyze();}));
 let saved=null; try{saved=localStorage.getItem('sarani.text'); const c=localStorage.getItem('sarani.cols'); if(c){cols.value=c;colsVal.textContent=c;}}catch(e){}
-src.value = saved!==null && saved!=='' ? saved : SAMPLE;
+src.value = saved||'';
 if(document.fonts&&document.fonts.ready){document.fonts.ready.then(analyze);}
 analyze();
 })();
