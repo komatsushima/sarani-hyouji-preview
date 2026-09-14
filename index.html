@@ -148,7 +148,7 @@ kbd{font-family:"DM Mono",monospace;font-size:12px;background:var(--panel-2);bor
 
 <header>
   <h1>さらに表示プレビュー</h1>
-  <p>PCで書いたポストを貼ると、Xのモバイルアプリで「さらに表示」に隠れる範囲を推定します。空行込みの行数と加重文字数（全角140字＝280）の2本のルールで判定します。</p>
+  <p>PCで書いたポストを貼ると、Xのモバイルアプリで「さらに表示」に隠れる範囲を推定します。空行・折り返し込みで10行以上なら9行目まで（9行目は末尾1字が欠ける）、加重文字数が280（全角140字）を超えれば280の手前まで、という2本のルールで判定します。装飾行や空行が多い投稿は実機で1〜2行多く見えることがあるため、推定は安全側です。</p>
 </header>
 
 <main>
@@ -178,7 +178,7 @@ kbd{font-family:"DM Mono",monospace;font-size:12px;background:var(--panel-2);bor
       <div class="panel-h"><h2>行ごとの判定</h2><span id="tblNote" style="font-size:12px;color:var(--ink-3)"></span></div>
       <div class="tablewrap">
       <table>
-        <thead><tr><th class="n">行</th><th class="n">見た目</th><th class="n">累計枠</th><th class="n">累計字</th><th>判定</th><th>内容</th></tr></thead>
+        <thead><tr><th class="n">行</th><th class="n">見た目</th><th class="n">累計行</th><th class="n">累計字</th><th>判定</th><th>内容</th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
       </div>
@@ -224,8 +224,8 @@ kbd{font-family:"DM Mono",monospace;font-size:12px;background:var(--panel-2);bor
 <script>
 (function(){
 const SAMPLE = "";
-const LIMIT_W = 280, BACKOFF = 12, T_H = 8.25;
-const UNIT = {J:1, U:1, L:0.7, S:0.5, B:0.6};
+const LIMIT_W = 280, BACKOFF = 12, T_H = 9; // 空行・折り返し込みで9行まで表示（10行以上で折りたたみ）
+const UNIT = {J:1, U:1, L:1, S:1, B:1};
 const CJK_RE=/[　-鿿豈-﫿＀-￯]|\p{Extended_Pictographic}/u;
 function lineClass(line,toks){
   if(line.trim()==='') return 'B';
@@ -343,7 +343,7 @@ function analyze(){
   const hiddenLines = cut? info.slice(cut.li+1).filter(l=>!l.blank).length + (cut.ti<info[cut.li].toks.length && !info[cut.li].blank ? 1:0) : 0;
   statsEl.innerHTML=
     `<div class="stat ${totalW>LIMIT_W?'bad':''}"><div class="k">加重文字数（上限280）</div><div class="v mono">${totalW}<small>/ 全角${zen%1?zen.toFixed(1):zen}字</small></div></div>`+
-    `<div class="stat ${mobile&&totalH>T_H?'bad':''}"><div class="k">表示枠の消費（日本語行換算・上限8.25）</div><div class="v mono">${totalH.toFixed(2)}<small>/ ${totalV}行</small></div></div>`+
+    `<div class="stat ${mobile&&totalH>T_H?'bad':''}"><div class="k">行数（空行・折り返し込み／上限9）</div><div class="v mono">${totalV}<small>行</small></div></div>`+
     `<div class="stat"><div class="k">文字のある行 / 空行</div><div class="v mono">${info.filter(l=>!l.blank).length}<small>行</small> ${info.filter(l=>l.blank).length}<small>空行</small></div></div>`+
     `<div class="stat ${cut?'bad':'good'}"><div class="k">隠れる行</div><div class="v mono">${cut?hiddenLines:0}<small>行</small></div></div>`;
 
@@ -352,7 +352,7 @@ function analyze(){
   else if(!cut){ verdictEl.innerHTML=`<div class="verdict"><span class="dot"></span><div>${mobile?'モバイルでも':'PCでは'}全文がそのまま表示されます。</div></div>`; }
   else{
     const tips=[];
-    if(reason==='lines') tips.push(`空行・折り返し込みで${totalV}行（日本語行換算${totalH.toFixed(2)}）あり、モバイルの表示枠（約8.25行分）を超えるため、${cut.li+1}行目${cut.wrap?'の折り返し途中':'の末尾'}で切れます。空行込み8行以内に収めるか、空行や装飾行を減らしてください。`);
+    if(reason==='lines') tips.push(`空行・折り返し込みで${totalV}行あり、モバイルで見えるのは9行目までのため、${cut.li+1}行目${cut.wrap?'の折り返し途中':'の末尾'}で切れます。空行込み9行以内に収めるか、空行や装飾行を減らしてください。`);
     if(reason==='chars') tips.push(`加重文字数${totalW}が上限280を超えるため、${cut.li+1}行目${cut.backoff?'の手前（直前の行末）':'の途中'}で切れます。切れる位置の直前に空行を置くと文の途中で切れません。`);
     if(eaten){ const ts=eaten.us.slice(eaten.from); if(ts.some(t=>t.url)) tips.push('切れる行の末尾がURLです。URLの末尾が「…さらに表示」に置き換わって欠けます。次の行に移すか、URLの後に絵文字などを足してください。'); else tips.push(`切れる行の末尾「${disp(ts)}」は「…さらに表示」に置き換わります。`); }
     const hiddenTxt=info.slice(cut.li+1).map(l=>l.line).join(' ');
@@ -371,10 +371,10 @@ function analyze(){
       else if(li===cut.li){ if(cut.ti<L.toks.length){st='edge';label='途中で切れる';} else {st='edge';label='末尾1字欠け';} }
     }
     if(L.blank && st!=='hide' && cut && li>=cut.li) {st='hide';label='非表示';}
-    trs.push(`<tr class="${st==='hide'?'hidden':st==='edge'?'edge':''} ${L.blank?'blank':''}"><td class="n mono">${li+1}</td><td class="n mono">${L.v>1?L.v+'行':'1'}</td><td class="n mono" title="日本語行換算の累計">${accH.toFixed(1)}</td><td class="n mono">${accW-(li<info.length-1?1:0)}</td><td><span class="pill ${st}">${label}</span></td><td class="txt">${L.blank?'（空行）':esc(L.line)}</td></tr>`);
+    trs.push(`<tr class="${st==='hide'?'hidden':st==='edge'?'edge':''} ${L.blank?'blank':''}"><td class="n mono">${li+1}</td><td class="n mono">${L.v>1?L.v+'行':'1'}</td><td class="n mono">${accV}</td><td class="n mono">${accW-(li<info.length-1?1:0)}</td><td><span class="pill ${st}">${label}</span></td><td class="txt">${L.blank?'（空行）':esc(L.line)}</td></tr>`);
   });
   rows.innerHTML=trs.join('');
-  tblNote.textContent='累計枠＝日本語行換算（上限8.25）／累計字＝加重文字数（改行も1）';
+  tblNote.textContent='累計行＝空行・折り返し込み（9行目まで表示）／累計字＝加重文字数（改行も1）';
 
   // ---- プレビュー ----
   modeLabel.textContent = mobile?'モバイル表示（推定）':'PCブラウザ表示（推定）';
