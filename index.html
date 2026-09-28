@@ -208,7 +208,7 @@ kbd{font-family:"DM Mono",monospace;font-size:12px;background:var(--panel-2);bor
             <div class="meta"><b>アカウント名</b><span class="verified"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z"/></svg></span><span class="handle">@account · 1時間</span><span class="xmark">𝕏</span></div>
             <div class="ptext" id="ptext"></div>
             <div class="hiddenzone" id="hz" hidden>
-              <div class="lbl">↓ タップするまで見えない部分（打ち消し線＝「…さらに表示」に置き換わって欠ける文字）</div>
+              <div class="lbl">↓ タップするまで見えない部分（打ち消し線＝「さらに表示」に置き換わって欠ける文字）</div>
               <div class="ptext" id="phidden"></div>
             </div>
             <div class="pfoot"><span>💬</span><span>🔁</span><span>♡ 2</span><span>📊 775</span><span>🔖</span><span>↑</span></div>
@@ -266,13 +266,30 @@ function visualLines(line){ // 実際にレンダリングして折り返し行�
 function disp(toks){return toks.map(t=>t.url?t.d:t.s).join('')}
 function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
 function renderTokens(toks){return toks.map(t=>t.url?'<a>'+esc(t.d)+'</a>':esc(t.s)).join('')}
-const MORE='… さらに表示';
+const MORE=' さらに表示';
+// PC版Xからコピーした本文は、リンク・メンションの前後に余計な改行が入ることがあるので整える
+function cleanPaste(text){
+  let L=text.split('\n');
+  const isTok=l=>/^\s*(@[A-Za-z0-9_]+|#\S+|https?:\/\/\S+|[a-z0-9.-]+\.[a-z]{2,}\/?\S*)\s*$/i.test(l);
+  const out=[];
+  for(let i=0;i<L.length;i++){
+    let l=L[i];
+    if(/^\s*https?:\/\/\s*$/.test(l) && i+1<L.length){ l=l.trim()+L[i+1].trim(); i++; }
+    const prev=out.length?out[out.length-1]:null;
+    if(prev!==null && isTok(l) && /[（(]\s*$/.test(prev)){ out[out.length-1]=prev+l.trim(); 
+      if(i+1<L.length && /^\s*[)）]/.test(L[i+1])){ out[out.length-1]+=L[i+1]; i++; } continue; }
+    if(prev!==null && /^\s*[)）]/.test(l) && isTok(prev)){ out[out.length-1]=prev+l; continue; }
+    out.push(l);
+  }
+  return out.join('\n');
+}
 function units(toks){const u=[];toks.forEach(t=>{if(t.url){[...t.d].forEach(c=>u.push({s:c,d:c,url:true}));}else u.push(t);});return u;}
 function renderUnits(us){let h='',inA=false;us.forEach(t=>{if(t.url&&!inA){h+='<a>';inA=true;}if(!t.url&&inA){h+='</a>';inA=false;}h+=esc(t.url?t.d:t.s);});if(inA)h+='</a>';return h;}
 
 function analyze(){
-  const text=src.value.replace(/\r\n?/g,'\n');
-  const lines=text.split('\n');
+  const text=cleanPaste(src.value.replace(/\r\n?/g,'\n'));
+  // モバイル表示では行頭の空白（全角含む）が詰められる
+  const lines=text.split('\n').map(l=>mode==='mobile'?l.replace(/^[\s\u3000]+/,''):l);
   const mobile = mode==='mobile';
   const colsN=parseFloat(cols.value);
   const avail=ptext.parentElement.clientWidth||320; const fs=Math.min(17, avail/colsN);
@@ -333,9 +350,7 @@ function analyze(){
   let eaten=null; // {li, from}: from 以降のトークンが「…さらに表示」に置き換わる
   if(cut && cut.ti>0){
     const L=info[cut.li]; const us=units(L.toks.slice(0,cut.ti)); let from=us.length-1; // 最低1文字は必ず欠ける
-    const base=visualLines(disp(us));
-    while(from>0 && visualLines(disp(us.slice(0,from))+MORE)>base) from--;
-    eaten={li:cut.li,from,us};
+    eaten={li:cut.li,from,us}; // 実機では末尾1文字だけが欠け、「さらに表示」は必要なら次の行に折り返す
   }
 
   // ---- 統計 ----
@@ -354,7 +369,7 @@ function analyze(){
     const tips=[];
     if(reason==='lines') tips.push(`空行・折り返し込みで${totalV}行あり、モバイルで見えるのは9行目までのため、${cut.li+1}行目${cut.wrap?'の折り返し途中':'の末尾'}で切れます。空行込み9行以内に収めるか、空行や装飾行を減らしてください。`);
     if(reason==='chars') tips.push(`加重文字数${totalW}が上限280を超えるため、${cut.li+1}行目${cut.backoff?'の手前（直前の行末）':'の途中'}で切れます。切れる位置の直前に空行を置くと文の途中で切れません。`);
-    if(eaten){ const ts=eaten.us.slice(eaten.from); if(ts.some(t=>t.url)) tips.push('切れる行の末尾がURLです。URLの末尾が「…さらに表示」に置き換わって欠けます。次の行に移すか、URLの後に絵文字などを足してください。'); else tips.push(`切れる行の末尾「${disp(ts)}」は「…さらに表示」に置き換わります。`); }
+    if(eaten){ const ts=eaten.us.slice(eaten.from); if(ts.some(t=>t.url)) tips.push('切れる行の末尾がURLです。URLの最後の1文字が「さらに表示」に置き換わって欠けます。次の行に移すか、URLの後に絵文字などを足してください。'); else tips.push(`切れる行の末尾の1文字「${disp(ts)}」は「さらに表示」に置き換わって欠けます。`); }
     const hiddenTxt=info.slice(cut.li+1).map(l=>l.line).join(' ');
     if(/https?:\/\/|\.(com|jp|to|ee|be|net|org)\b/i.test(hiddenTxt)) tips.push('隠れる部分にURLがあります。タップされないと見えません。');
     if(/\d{1,2}\/\d{1,2}|\d{1,2}:\d{2}|開場|開演|¥|円/.test(hiddenTxt)) tips.push('隠れる部分に日程・時間・料金らしき情報があります。');
@@ -384,7 +399,7 @@ function analyze(){
     else if(li===cut.li){
       const vis=eaten?eaten.us.slice(0,eaten.from):units(L.toks.slice(0,cut.ti)), eat=eaten?eaten.us.slice(eaten.from):null, rest=L.toks.slice(cut.ti);
       shown+=`<span class="pl">${renderUnits(vis)}<span class="more">${MORE}</span></span>`;
-      if((eat&&eat.length)||rest.length) hidden+=`<span class="pl">${eat&&eat.length?`<span class="cut" title="「…さらに表示」に置き換わって欠ける部分">${esc(disp(eat))}</span>`:''}${renderTokens(rest)}</span>`;
+      if((eat&&eat.length)||rest.length) hidden+=`<span class="pl">${eat&&eat.length?`<span class="cut" title="「さらに表示」に置き換わって欠ける文字">${esc(disp(eat))}</span>`:''}${renderTokens(rest)}</span>`;
     } else hidden+=`<span class="pl">${L.blank?'&nbsp;':renderTokens(L.toks)}</span>`;
   });
   ptext.innerHTML=shown||'<span class="pl" style="color:var(--phone-muted)">本文を入力すると、ここにモバイルの見え方が出ます。</span>';
