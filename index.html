@@ -122,6 +122,12 @@ tr.blank td.txt{color:var(--ink-3);font-style:italic}
 .hiddenzone .ptext{color:var(--hide);opacity:.75;font-size:15px}
 .hiddenzone .ptext .pl{min-height:1.2em}
 .pfoot{display:flex;justify-content:space-between;color:var(--phone-muted);font-size:13px;margin-top:14px;padding-right:4px}
+.phone-wrap.pc{max-width:640px}
+.phone-wrap.pc .phone{background:var(--panel);border-radius:16px;padding:0;box-shadow:none;border:1px solid var(--line)}
+.phone-wrap.pc .phone [class^="btn-"],.phone-wrap.pc .island,.phone-wrap.pc .statusbar,.phone-wrap.pc .appbar,.phone-wrap.pc .tabs,.phone-wrap.pc .homebar{display:none}
+.phone-wrap.pc .screen{border-radius:16px;padding:16px 0 12px;min-height:0}
+.phone-wrap.pc .ptext{line-height:1.3;max-width:100%}
+.phone-wrap.pc .ptext .more{display:block;margin-top:2px}
 .homebar{width:134px;height:5px;border-radius:3px;background:var(--phone-ink);margin:18px auto 0;opacity:.9}
 .mode{display:flex;gap:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:3px}
 .mode button{border:0;background:transparent;padding:4px 10px;border-radius:6px;color:var(--ink-2)}
@@ -144,7 +150,6 @@ kbd{font-family:"DM Mono",monospace;font-size:12px;background:var(--panel-2);bor
 </style>
 </head>
 <body>
-
 
 <header>
   <h1>さらに表示プレビュー</h1>
@@ -292,8 +297,9 @@ function analyze(){
   const lines=text.split('\n').map(l=>mode==='mobile'?l.replace(/^[\s\u3000]+/,''):l);
   const mobile = mode==='mobile';
   const colsN=parseFloat(cols.value);
-  const avail=ptext.parentElement.clientWidth||320; const fs=Math.min(17, avail/colsN);
-  [mtext,ptext,phidden].forEach(el=>{el.style.fontSize=fs+'px'; el.style.width=colsN+'em';});
+  document.querySelector('.phone-wrap').classList.toggle('pc',!mobile);
+  const avail=ptext.parentElement.clientWidth||320; const fs=mobile?Math.min(17, avail/colsN):15;
+  [mtext,ptext,phidden].forEach(el=>{el.style.fontSize=fs+'px'; el.style.width=mobile?colsN+'em':'34em';});
   let cumW=0, cumV=0, totalV=0, totalW=0;
   const info=lines.map((line,idx)=>{
     const toks=tokens(line); const w=toks.reduce((a,t)=>a+t.w,0)+(idx<lines.length-1?1:0);
@@ -310,8 +316,12 @@ function analyze(){
       const L=info[li]; let inLine=0;
       for(let ti=0;ti<L.toks.length;ti++){
         if(acc+L.toks[ti].w>LIMIT_W){
-          if(inLine<BACKOFF && li>0){ charCut={li:li-1,ti:info[li-1].toks.length,backoff:true}; }
-          else charCut={li,ti};
+          if(!mobile){ // PC: 直近の空白まで戻る。行内に空白がなければ直前の行末へ
+            let k=ti; while(k>0 && L.toks[k-1].s!==' ') k--;
+            if(k>0) charCut={li,ti:k-1,backoff:true}; // 空白の手前で切る
+            else if(li>0){ let pl=li-1; while(pl>0&&info[pl].blank) pl--; charCut={li:pl,ti:info[pl].toks.length,backoff:true}; }
+            else charCut={li,ti};
+          } else charCut={li,ti};
           break outer;
         }
         acc+=L.toks[ti].w; inLine+=L.toks[ti].w;
@@ -348,7 +358,7 @@ function analyze(){
   }
   // 末尾1字が欠ける（切れる行の最後のトークン）
   let eaten=null; // {li, from}: from 以降のトークンが「…さらに表示」に置き換わる
-  if(cut && cut.ti>0){
+  if(mobile && cut && cut.ti>0){ // PCでは文字は欠けず「さらに表示」が次の行に出る
     const L=info[cut.li]; const us=units(L.toks.slice(0,cut.ti)); let from=us.length-1; // 最低1文字は必ず欠ける
     eaten={li:cut.li,from,us}; // 実機では末尾1文字だけが欠け、「さらに表示」は必要なら次の行に折り返す
   }
@@ -368,7 +378,7 @@ function analyze(){
   else{
     const tips=[];
     if(reason==='lines') tips.push(`空行・折り返し込みで${totalV}行あり、モバイルで見えるのは9行目までのため、${cut.li+1}行目${cut.wrap?'の折り返し途中':'の末尾'}で切れます。空行込み9行以内に収めるか、空行や装飾行を減らしてください。`);
-    if(reason==='chars') tips.push(`加重文字数${totalW}が上限280を超えるため、${cut.li+1}行目${cut.backoff?'の手前（直前の行末）':'の途中'}で切れます。切れる位置の直前に空行を置くと文の途中で切れません。`);
+    if(reason==='chars') tips.push(mobile?`加重文字数${totalW}が上限280を超えるため、${cut.li+1}行目の途中で切れます（末尾1文字が「さらに表示」に置き換わります）。切れる位置の直前に空行を置くと文の途中で切れません。`:`加重文字数${totalW}が上限280を超えるため、280字手前の直近の空白・改行（${cut.li+1}行目）で切れ、「さらに表示」が次の行に出ます。`);
     if(eaten){ const ts=eaten.us.slice(eaten.from); if(ts.some(t=>t.url)) tips.push('切れる行の末尾がURLです。URLの最後の1文字が「さらに表示」に置き換わって欠けます。次の行に移すか、URLの後に絵文字などを足してください。'); else tips.push(`切れる行の末尾の1文字「${disp(ts)}」は「さらに表示」に置き換わって欠けます。`); }
     const hiddenTxt=info.slice(cut.li+1).map(l=>l.line).join(' ');
     if(/https?:\/\/|\.(com|jp|to|ee|be|net|org)\b/i.test(hiddenTxt)) tips.push('隠れる部分にURLがあります。タップされないと見えません。');
@@ -395,10 +405,10 @@ function analyze(){
   modeLabel.textContent = mobile?'モバイル表示（推定）':'PCブラウザ表示（推定）';
   let shown='', hidden='';
   info.forEach((L,li)=>{
-    if(!cut || li<cut.li){ if(!(cut && L.blank)) shown+=`<span class="pl">${L.blank?'&nbsp;':renderTokens(L.toks)}</span>`; }
+    if(!cut || li<cut.li){ if(!(cut && mobile && L.blank)) shown+=`<span class="pl">${L.blank?'&nbsp;':renderTokens(L.toks)}</span>`; }
     else if(li===cut.li){
       const vis=eaten?eaten.us.slice(0,eaten.from):units(L.toks.slice(0,cut.ti)), eat=eaten?eaten.us.slice(eaten.from):null, rest=L.toks.slice(cut.ti);
-      shown+=`<span class="pl">${renderUnits(vis)}<span class="more">${MORE}</span></span>`;
+      shown+= mobile ? `<span class="pl">${renderUnits(vis)}<span class="more">${MORE}</span></span>` : `<span class="pl">${renderUnits(vis)}</span><span class="pl more">さらに表示</span>`;
       if((eat&&eat.length)||rest.length) hidden+=`<span class="pl">${eat&&eat.length?`<span class="cut" title="「さらに表示」に置き換わって欠ける文字">${esc(disp(eat))}</span>`:''}${renderTokens(rest)}</span>`;
     } else hidden+=`<span class="pl">${L.blank?'&nbsp;':renderTokens(L.toks)}</span>`;
   });
